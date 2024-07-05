@@ -4,8 +4,10 @@ import { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder } from 'di
 import 'dotenv/config';
 
 let errorToDisplay;
-let intervalID;  // Store the interval ID for stopping the periodic updates if needed.
-let lastMessageID; // Store the ID of the last status message sent
+
+// Store intervals and last message IDs for each guild and channel
+const intervals = new Map();
+const lastMessages = new Map();
 
 class Bot {
     constructor() {
@@ -74,7 +76,7 @@ class Bot {
         }
     }
 
-    async updateServerStatus(channelId, type, host, port) {
+    async updateServerStatus(guildId, channelId, type, host, port) {
         try {
             const channel = await this.client.channels.fetch(channelId);
             if (!channel) {
@@ -82,6 +84,8 @@ class Bot {
                 return;
             }
 
+            const guildLastMessages = lastMessages.get(guildId) || new Map();
+            const lastMessageID = guildLastMessages.get(channelId);
             if (lastMessageID) {
                 try {
                     const lastMessage = await channel.messages.fetch(lastMessageID);
@@ -95,7 +99,7 @@ class Bot {
 
             const serverInfo = await this.getServerInfo(type, host, port);
             if (serverInfo) {
-                let currentDateTimestamp = new Date().getTime() / 1000
+                let currentDateTimestamp = new Date().getTime() / 1000;
                 const successEmbed = new EmbedBuilder()
                     .setColor(0x00FF00)
                     .setTitle(`Name: ${serverInfo.name}`)
@@ -111,7 +115,8 @@ class Bot {
                     .setFooter({ text: 'Bot created by volkunus#7863.' });
 
                 const sentMessage = await channel.send({ embeds: [successEmbed] });
-                lastMessageID = sentMessage.id;
+                guildLastMessages.set(channelId, sentMessage.id);
+                lastMessages.set(guildId, guildLastMessages);
             } else if (String(errorToDisplay).includes("Invalid")) {
                 const invalidGameEmbed = new EmbedBuilder()
                     .setColor(0xFF0000)
@@ -120,7 +125,8 @@ class Bot {
                     .setFooter({ text: 'Bot created by volkunus#7863.' });
 
                 const sentMessage = await channel.send({ embeds: [invalidGameEmbed] });
-                lastMessageID = sentMessage.id;
+                guildLastMessages.set(channelId, sentMessage.id);
+                lastMessages.set(guildId, guildLastMessages);
             } else {
                 errorToDisplay = "Game server appears to be offline.";
                 const errorEmbed = new EmbedBuilder()
@@ -129,7 +135,8 @@ class Bot {
                     .setFooter({ text: 'Bot created by volkunus#7863.' });
 
                 const sentMessage = await channel.send({ embeds: [errorEmbed] });
-                lastMessageID = sentMessage.id;
+                guildLastMessages.set(channelId, sentMessage.id);
+                lastMessages.set(guildId, guildLastMessages);
             }
         } catch (error) {
             console.error(`Failed to update server status: ${error}`);
@@ -194,17 +201,27 @@ class Bot {
                     return;
                 }
 
+                const guildId = interaction.guildId;
                 const channelId = interaction.channelId;
 
+                // Initialize guild maps if they don't exist
+                if (!intervals.has(guildId)) intervals.set(guildId, new Map());
+                if (!lastMessages.has(guildId)) lastMessages.set(guildId, new Map());
+
+                const guildIntervals = intervals.get(guildId);
+                
                 // Clear any existing interval to avoid duplicate updates
-                if (intervalID) {
-                    clearInterval(intervalID);
+                if (guildIntervals.has(channelId)) {
+                    clearInterval(guildIntervals.get(channelId));
                 }
 
                 // Set an interval to update the server status every 5 minutes (300000 milliseconds)
-                intervalID = setInterval(() => {
-                    this.updateServerStatus(channelId, type, host, port);
-                }, 30000);
+                const intervalID = setInterval(() => {
+                    this.updateServerStatus(guildId, channelId, type, host, port);
+                }, 300000); // 5 minutes
+
+                guildIntervals.set(channelId, intervalID);
+                intervals.set(guildId, guildIntervals);
 
                 await interaction.reply({ content: 'Started monitoring server status. Updates will be sent every 5 minutes.', ephemeral: true });
             }
