@@ -1,37 +1,46 @@
 import { GameDig } from 'gamedig';
 import { REST, Routes } from 'discord.js';
-import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import 'dotenv/config';
+let errorToDisplay;
 
 class Bot {
-
     constructor() {
         this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
         this.rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
         this.commands = [
-            {
-                name: 'ping',
-                description: 'Replies with Pong!',
-            },
-            {
-                name: 'serverinfo',
-                description: 'Replies with server info!',
-            },
+            new SlashCommandBuilder()
+                .setName('serverinfo')
+                .setDescription('Replies with server info!')
+                .addStringOption(option => 
+                    option.setName('type')
+                          .setDescription('The type of game server')
+                          .setRequired(true))
+                .addStringOption(option => 
+                    option.setName('host')
+                          .setDescription('The host address of the game server')
+                          .setRequired(true))
+                .addIntegerOption(option => 
+                    option.setName('port')
+                          .setDescription('The port of the game server')
+                          .setRequired(true))
+                .toJSON(),
         ];
     }
 
-    async getServerInfo() {
+    async getServerInfo(type, host, port) {
         try {
             const state = await GameDig.query({
-                type: 'valheim',
-                host: '192.168.1.157',
-                port: 4457, // lets us explicitly specify the query port of this server
+                type: type.toLowerCase(),
+                host: host,
+                port: port,
                 givenPortOnly: true // the library will attempt multiple ports in order to ensure success, to avoid this pass this option
             });
             console.log(state);
             return state; // Returning state so it can be used elsewhere
         } catch (error) {
-            console.log(`Server is offline, error: ${error}`);
+            errorToDisplay = error;
+            console.log(`Error: ${error}`);
             return null;
         }
     }
@@ -54,44 +63,42 @@ class Bot {
         this.client.on('interactionCreate', async interaction => {
             if (!interaction.isChatInputCommand()) return;
 
-            if (interaction.commandName === 'ping') {
-                await interaction.reply('Pong!');
-            }
-
             if (interaction.commandName === 'serverinfo') {
-                const serverInfo = await this.getServerInfo();
+                const type = interaction.options.getString('type');
+                const host = interaction.options.getString('host');
+                const port = interaction.options.getInteger('port');
 
+                const serverInfo = await this.getServerInfo(type, host, port);
                 if (serverInfo) {
-                    //defining a successful embed, where all the data was fetched correctly and can be returned
                     const successEmbed = new EmbedBuilder()
                         .setColor(0x00FF00)
-                        .setTitle('Server Status')
-                        // .setURL('https://d2runewizard.com/terror-zone-tracker')
-                        .setDescription('Detailed information about the dedicated server')
-                        .setThumbnail('https://media.moddb.com/images/members/5/4358/4357203/profile/d2r.jpg')
+                        .setTitle(`Name: ${serverInfo.name}`)
                         .addFields(
-                            { name: 'Game', value: String(serverInfo.raw.folder).toUpperCase() },
-                            { name: 'Server Name:', value: `${serverInfo.name}` },
-                            { name: 'Server Address:', value: `${serverInfo.connect}`, inline: true },
-                            { name: 'Ping:', value: `${serverInfo.ping}`, inline: true },
+                            { name: 'Status:', value: `:green_circle:Online` },
+                            { name: 'Game:', value: String(serverInfo.raw.folder).toUpperCase() },
+                            { name: 'Address:', value: `\`${serverInfo.connect}\``},
+                            { name: 'Ping:', value: `${serverInfo.ping}` },
                             { name: 'Password Protected:', value: `${serverInfo.password}` },
-                            { name: 'Players:', value: `${serverInfo.numplayers}/${serverInfo.maxplayers}`, inline: true },
+                            { name: 'Players:', value: `${serverInfo.numplayers}/${serverInfo.maxplayers}`},
                         )
                         .setFooter({ text: 'Bot created by volkunus#7863.' });
 
                     await interaction.reply({ embeds: [successEmbed] });
+                } else if (String(errorToDisplay).includes("Invalid")) {
+                    const invalidGameEmbed = new EmbedBuilder()
+                        .setColor(0xFF0000)
+                        .setTitle(`${errorToDisplay}`)
+                        .setDescription("For more information about the supported games, go to: https://github.com/gamedig/node-gamedig/blob/HEAD/GAMES_LIST.md")
+                        .setFooter({ text: 'Bot created by volkunus#7863.' });
+                    await interaction.reply({ embeds: [invalidGameEmbed] , ephemeral: true});
+                    
                 } else {
-                    //defining an error embed, which is to be sent when there was something wrong when fetching the data
+                    errorToDisplay = "Game server appears to be offline."
                     const errorEmbed = new EmbedBuilder()
                         .setColor(0xFF0000)
-                        .setTitle('Error')
-                        // .setURL('https://d2runewizard.com/terror-zone-tracker')
-                        .addFields(
-                            { name: 'Error...', value: 'Server is offline or an error occurred.' }
-                        )
-                        .setTimestamp()
+                        .setTitle(`${errorToDisplay}`)
                         .setFooter({ text: 'Bot created by volkunus#7863.' });
-                    await interaction.reply({ embeds: [errorEmbed] });
+                    await interaction.reply({ embeds: [errorEmbed] , ephemeral: true});
                 }
             }
         });
