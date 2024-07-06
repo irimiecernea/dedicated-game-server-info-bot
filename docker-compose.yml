@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   volkunus/dgs-info-bot:
-    build: .
+    image: volkunus/dgs-info-bot:latest
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - CLIENT_ID=${CLIENT_ID}
