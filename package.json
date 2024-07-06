@@ -4,15 +4,15 @@
   "description": "This is a Discord bot for fetching public information about dedicated game servers hosted via Steam.",
   "main": "index.js",
   "scripts": {
-    "bot": "node code.js"
+    "bot": "node bot.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.15.3",
-    "dotenv": "^16.4.5",
-    "gamedig": "^5.0.1"
+    "discord.js": "14.15.3",
+    "dotenv": "16.4.5",
+    "gamedig": "5.0.1"
   },
   "type": "module"
 }
