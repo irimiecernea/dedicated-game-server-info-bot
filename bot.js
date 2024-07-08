@@ -46,6 +46,10 @@ class Bot {
                           .setDescription('The port of the game server')
                           .setRequired(true))
                 .toJSON(),
+            new SlashCommandBuilder()
+                .setName('stopmonitor')
+                .setDescription('Stops monitoring the server in the current channel.')
+                .toJSON(),
         ];
     }
 
@@ -218,12 +222,32 @@ class Bot {
                 // Set an interval to update the server status every 5 minutes (300000 milliseconds)
                 const intervalID = setInterval(() => {
                     this.updateServerStatus(guildId, channelId, type, host, port);
-                }, 300000); // 5 minutes
+                }, 30000); // 5 minutes
 
                 guildIntervals.set(channelId, intervalID);
                 intervals.set(guildId, guildIntervals);
 
                 await interaction.reply({ content: 'Started monitoring server status. Updates will be sent every 5 minutes.', ephemeral: true });
+            }
+
+            if (interaction.commandName === 'stopmonitor') {
+                const guildId = interaction.guildId;
+                const channelId = interaction.channelId;
+
+                if (intervals.has(guildId)) {
+                    const guildIntervals = intervals.get(guildId);
+                    if (guildIntervals.has(channelId)) {
+                        clearInterval(guildIntervals.get(channelId));
+                        guildIntervals.delete(channelId);
+                        intervals.set(guildId, guildIntervals);
+
+                        await interaction.reply({ content: 'Stopped monitoring server status in this channel.', ephemeral: true });
+                    } else {
+                        await interaction.reply({ content: 'No server monitoring is active in this channel.', ephemeral: true });
+                    }
+                } else {
+                    await interaction.reply({ content: 'No server monitoring is active in this channel.', ephemeral: true });
+                }
             }
         });
 
