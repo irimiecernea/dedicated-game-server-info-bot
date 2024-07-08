@@ -7,7 +7,7 @@
     "bot": "node bot.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Irimie Cernea",
   "license": "ISC",
   "dependencies": {
     "discord.js": "14.15.3",
