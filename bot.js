@@ -222,7 +222,7 @@ class Bot {
                 // Set an interval to update the server status every 5 minutes (300000 milliseconds)
                 const intervalID = setInterval(() => {
                     this.updateServerStatus(guildId, channelId, type, host, port);
-                }, 30000); // 5 minutes
+                }, 300000); // 5 minutes
 
                 guildIntervals.set(channelId, intervalID);
                 intervals.set(guildId, guildIntervals);
