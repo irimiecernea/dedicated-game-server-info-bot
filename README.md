@@ -30,6 +30,16 @@ BOT_TOKEN=12345
 CLIENT_ID=12345
 ```
 
+## Run command
+
+Run `npm run bot` in the terminal to start the bot. You should see the following output, which should contain the name of your bot:
+
+```
+Started refreshing application (/) commands.
+Successfully reloaded application (/) commands.
+Logged in as my-bot-name#1234!
+```
+
 ### Bot commands
 
 ```
