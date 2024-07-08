@@ -6,4 +6,8 @@ services:
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - CLIENT_ID=${CLIENT_ID}
+    volumes:
+      - ./bot-data:/usr/src/app
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    command: ["node", "bot.js"]
     restart: always
