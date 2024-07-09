@@ -7,6 +7,7 @@ This is a Discord bot for fetching public information about dedicated game serve
 
 - git
 - brew (https://brew.sh)
+- docker (optional)
 
 ### 🔧 Installation
 
@@ -30,7 +31,7 @@ BOT_TOKEN=12345
 CLIENT_ID=12345
 ```
 
-## Run command
+## 🔎 Run command
 
 Run `npm run bot` in the terminal to start the bot. You should see the following output, which should contain the name of your bot:
 
@@ -40,14 +41,31 @@ Successfully reloaded application (/) commands.
 Logged in as my-bot-name#1234!
 ```
 
-### Bot commands
+### 📝 Bot commands
 
 ```
 /serverinfo - needs 3 parameters, game type (e.g. counterstrike2, valheim, etc.), host (e.g. 86.124.33.6) and port (e.g. 27015)
+
 /monitorserveer - needs 3 parameters, game type (e.g. counterstrike2, valheim, etc.), host (e.g. 86.124.33.6) and port (e.g. 27015). updates the current channel every 300 seconds (5 minutes) with the server status.
+
 /stopmonitor - stops the monitoring in the current channel
 ```
 
-### Supported games
+### 🎮 Supported games
 
 When using either `/serverinfo` or `/monitorserver` commands, the game type needs to exist [here](https://github.com/gamedig/node-gamedig/blob/HEAD/GAMES_LIST.md). If you query for an invalid game type or if the server is offline, the bot will show the appropriate error.
+
+### 🐳 Deploy with Docker-Compose
+
+The bot can be hosted using Docker Compose, by following the steps below:
+
+1. Copy the contents of the `docker-compose.yml` file from this project
+2. Create a new `docker-compose.yml` file in a location of your choice where you want to host the bot
+3. Create a new directory named `bot-data` on the host. This will contain the bot's code and dependecies.
+4. Run `docker-compose up --detach` to create the container. If everything is successful, you will see similar logs with the ones from the Run Command section above.
+
+### ❔ Known issues
+
+Since the bot does not use a database, the `/monitorserver` command will have to be set-up again in the desired channel if the bot crashes or becomes offline. 
+
+In the case where Docker is used for hosting the bot, the container will be automatically restarted if the bot crashes, but the `/monitorserver` command will still need to be set-up again if it was previously set in a channel.
