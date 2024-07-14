@@ -15,7 +15,7 @@ This is a Discord bot for fetching public information about dedicated game serve
 brew install nvm
 ```
 
-## 🧭 Quickstart
+### 🧭 Quickstart
 
 Clone the project and then run the following commands:
 
@@ -31,7 +31,7 @@ BOT_TOKEN=12345
 CLIENT_ID=12345
 ```
 
-## 🔎 Run command
+### 🔎 Run command
 
 Run `npm run bot` in the terminal to start the bot. You should see the following output, which should contain the name of your bot:
 
