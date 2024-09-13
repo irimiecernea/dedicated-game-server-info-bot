@@ -10,7 +10,7 @@
   "author": "Irimie Cernea",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "14.15.3",
+    "discord.js": "14.16.2",
     "dotenv": "16.4.5",
     "gamedig": "5.0.1"
   },
