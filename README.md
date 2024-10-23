@@ -66,6 +66,4 @@ The bot can be hosted using Docker Compose, by following the steps below:
 
 ### ❔ Known issues
 
-Since the bot does not use a database, the `/monitorserver` command will have to be set-up again in the desired channel if the bot crashes or becomes offline. 
-
-In the case where Docker is used for hosting the bot, the container will be automatically restarted if the bot crashes, but the `/monitorserver` command will still need to be set-up again if it was previously set in a channel.
+-
