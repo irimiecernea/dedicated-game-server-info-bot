@@ -10,10 +10,10 @@ let errorToDisplay;
 function loadJSONData() {
     try {
         const data = fs.readFileSync('bot_data.json', 'utf8');
+        console.log('Loaded JSON data successfully.'); // Added log
         return JSON.parse(data);
     } catch (err) {
         if (err.code === 'ENOENT') {
-            // File does not exist, return default structure
             console.log('bot_data.json not found, initializing with empty data.');
             return { intervals: {}, lastMessages: {} };
         } else {
@@ -23,14 +23,41 @@ function loadJSONData() {
     }
 }
 
-
 function saveJSONData(data) {
     try {
-        fs.writeFileSync('bot_data.json', JSON.stringify(data, null, 2), 'utf8');
+        // Custom serializer to handle circular references
+        const cache = new Set();  // Used to detect circular references
+
+        const dataToSave = JSON.parse(JSON.stringify(data, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (cache.has(value)) {
+                    return;  // Skip circular reference
+                }
+                cache.add(value);
+            }
+
+            // Exclude Timeout properties related to circular structures
+            if (key === '_idleNext' || key === '_idlePrev' || key === 'intervalID') {
+                return undefined;  // Skip circular or non-serializable fields
+            }
+
+            // Log any skipped non-serializable fields like Map/Set
+            if (value instanceof Map || value instanceof Set) {
+                console.log(`Skipping non-serializable field: ${key}`);
+                return undefined;
+            }
+
+            return value;
+        }));
+
+        // Write the cleaned-up data to the file
+        fs.writeFileSync('bot_data.json', JSON.stringify(dataToSave, null, 2), 'utf8');
+        console.log('Saved JSON data successfully.');
     } catch (err) {
         console.error('Error saving JSON data:', err);
     }
 }
+
 
 let botData = loadJSONData();
 const intervals = new Map(Object.entries(botData.intervals));
@@ -88,11 +115,11 @@ class Bot {
                 port: port,
                 givenPortOnly: true
             });
-            console.log(state);
+            console.log('Successfully retrieved server info:', state); // Added log
             return state;
         } catch (error) {
             errorToDisplay = error;
-            console.log(`Error: ${error}`);
+            console.error(`Error retrieving server info: ${error}`); // Added log
             return null;
         }
     }
@@ -103,7 +130,7 @@ class Bot {
             await this.rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: this.commands });
             console.log('Successfully reloaded application (/) commands.');
         } catch (error) {
-            console.error(error);
+            console.error('Error setting up commands:', error); // Added log
         }
     }
 
@@ -111,7 +138,7 @@ class Bot {
         try {
             const channel = await this.client.channels.fetch(channelId);
             if (!channel) {
-                console.log(`Channel with ID ${channelId} not found.`);
+                console.log(`Channel with ID ${channelId} not found.`); // Added log
                 return;
             }
 
@@ -122,9 +149,10 @@ class Bot {
                     const lastMessage = await channel.messages.fetch(lastMessageID);
                     if (lastMessage) {
                         await lastMessage.delete();
+                        console.log('Deleted previous message successfully.'); // Added log
                     }
                 } catch (err) {
-                    console.log(`Failed to delete previous message: ${err}`);
+                    console.log(`Failed to delete previous message: ${err}`); // Added log
                 }
             }
 
@@ -132,24 +160,24 @@ class Bot {
             if (serverInfo) {
                 let currentDateTimestamp = new Date().getTime() / 1000;
                 let port = (serverInfo.connect).split(':')[1];
-                let address = (serverInfo.connect).includes('-') ? `nomansland.go.ro:${port}` : serverInfo.connect
+                let address = (serverInfo.connect).includes('-') ? `nomansland.go.ro:${port}` : serverInfo.connect;
                 let serverLockStatus;
                 let playerCount;
 
-                if((serverInfo.raw.folder).includes('AbioticFactor')) {
+                if ((serverInfo.raw.folder).includes('AbioticFactor')) {
                     serverLockStatus = (serverInfo.raw.tags[4]).split(':')[1];
                     playerCount = (serverInfo.raw.tags[5]).split(':')[1];
                 } else {
                     serverLockStatus = serverInfo.password;
                     playerCount = serverInfo.numplayers;
                 }
-                
+
                 const successEmbed = new EmbedBuilder()
                     .setColor(0x00FF00)
                     .setTitle('Server Information')
                     .addFields(
                         { name: 'Server Name:', value: `*${serverInfo.name}*` },
-                        { name: 'Status:', value: `:green_circle: Online`},
+                        { name: 'Status:', value: `:green_circle: Online` },
                         { name: 'Game:', value: String(serverInfo.raw.folder).toUpperCase() },
                         { name: 'Address:', value: `\`${address}\`` },
                         { name: 'Ping:', value: `${serverInfo.ping}` },
@@ -162,15 +190,16 @@ class Bot {
                 const sentMessage = await channel.send({ embeds: [successEmbed] });
                 guildLastMessages[channelId] = sentMessage.id;
                 lastMessages.set(guildId, guildLastMessages);
+                console.log('Updated server status successfully.'); // Added log
 
                 // Save updated lastMessages to JSON file
                 botData.lastMessages[guildId] = guildLastMessages;
                 saveJSONData(botData);
-            } else if (String(errorToDisplay).includes("Invalid")) {
+            } else if (String(errorToDisplay).includes('Invalid')) {
                 const invalidGameEmbed = new EmbedBuilder()
                     .setColor(0xFF0000)
                     .setTitle(`${errorToDisplay}`)
-                    .setDescription("For more information about the supported games, go to: https://github.com/gamedig/node-gamedig/blob/HEAD/GAMES_LIST.md")
+                    .setDescription('For more information about the supported games, go to: https://github.com/gamedig/node-gamedig/blob/HEAD/GAMES_LIST.md')
                     .setFooter({ text: 'Bot created by volkunus#7863.' });
 
                 const sentMessage = await channel.send({ embeds: [invalidGameEmbed] });
@@ -180,7 +209,7 @@ class Bot {
                 botData.lastMessages[guildId] = guildLastMessages;
                 saveJSONData(botData);
             } else {
-                errorToDisplay = "Game server appears to be offline.";
+                errorToDisplay = 'Game server appears to be offline.';
                 const errorEmbed = new EmbedBuilder()
                     .setColor(0xFF0000)
                     .setTitle(`${errorToDisplay}`)
@@ -194,7 +223,7 @@ class Bot {
                 saveJSONData(botData);
             }
         } catch (error) {
-            console.error(`Failed to update server status: ${error}`);
+            console.error(`Failed to update server status: ${error}`); // Added log
         }
     }
 
@@ -207,7 +236,7 @@ class Bot {
             for (const guildId in botData.intervals) {
                 const guildIntervals = botData.intervals[guildId];
                 for (const channelId in guildIntervals) {
-                    const [type, host, port] = guildIntervals[channelId];
+                    const { type, host, port } = guildIntervals[channelId];
                     const intervalID = setInterval(() => {
                         this.updateServerStatus(guildId, channelId, type, host, port);
                     }, 300000); // 5 minutes
@@ -274,82 +303,51 @@ class Bot {
 
                     await interaction.reply({ embeds: [errorEmbed] });
                 }
-            }
-
-            if (interaction.commandName === 'monitorserver') {
+            } else if (interaction.commandName === 'monitorserver') {
                 const type = interaction.options.getString('type');
                 const host = interaction.options.getString('host');
                 const port = interaction.options.getInteger('port');
-            
-                const guildId = interaction.guildId;
-                const channelId = interaction.channelId;
-            
-                if (!intervals.has(guildId)) intervals.set(guildId, {});
-                if (!lastMessages.has(guildId)) lastMessages.set(guildId, {});
-            
-                const guildIntervals = intervals.get(guildId);
-            
-                if (guildIntervals[channelId]) {
-                    clearInterval(guildIntervals[channelId]);  // Stop the existing interval if any
-                }
-            
+                const guildId = interaction.guild.id;
+                const channelId = interaction.channel.id;
+
+                // Start monitoring server
                 const intervalID = setInterval(() => {
                     this.updateServerStatus(guildId, channelId, type, host, port);
-                }, 300000);  // 5 minutes
-            
-                // Save the interval ID in the intervals Map
-                guildIntervals[channelId] = intervalID;
-            
-                // Store server info (without interval ID) in botData for saving to JSON
-                botData.intervals[guildId] = botData.intervals[guildId] || {};
-                botData.intervals[guildId][channelId] = [type, host, port];
-            
-                saveJSONData(botData);  // Save updated data to JSON
-            
-                await interaction.reply({ content: 'Started monitoring server status.', ephemeral: true });
-            }
-            
+                }, 300000); // 5 minutes
 
-            if (interaction.commandName === 'stopmonitor') {
-                const guildId = interaction.guildId;
-                const channelId = interaction.channelId;
-            
-                if (intervals.has(guildId)) {
-                    const guildIntervals = intervals.get(guildId);
-                    if (guildIntervals[channelId]) {
-                        clearInterval(guildIntervals[channelId]);
-                        delete guildIntervals[channelId];  // Remove the channel entry from intervals map
-            
-                        if (Object.keys(guildIntervals).length === 0) {
-                            intervals.delete(guildId);  // Remove the guild if no channels are being monitored
-                        } else {
-                            intervals.set(guildId, guildIntervals);  // Update intervals map
-                        }
-            
-                        // Update botData and save to JSON file
-                        if (botData.intervals[guildId]) {
-                            delete botData.intervals[guildId][channelId];
-                            if (Object.keys(botData.intervals[guildId]).length === 0) {
-                                delete botData.intervals[guildId];  // Remove the guild entry if empty
-                            }
-                            saveJSONData(botData);  // Save updated data
-                        }
-            
-                        await interaction.reply({ content: 'Stopped monitoring server status in this channel.', ephemeral: true });
-                    } else {
-                        await interaction.reply({ content: 'No server monitoring is active in this channel.', ephemeral: true });
-                    }
+                // Store interval data in memory and save relevant info to JSON
+                if (!intervals.has(guildId)) intervals.set(guildId, {});
+                intervals.get(guildId)[channelId] = intervalID;
+
+                if (!botData.intervals[guildId]) botData.intervals[guildId] = {};
+                botData.intervals[guildId][channelId] = { type, host, port };
+                saveJSONData(botData);
+
+                console.log(`Now monitoring server: ${type} ${host}:${port}`); // Added log
+                await interaction.reply({ content: `Now monitoring server: ${type} ${host}:${port}`, ephemeral: true });
+            } else if (interaction.commandName === 'stopmonitor') {
+                const guildId = interaction.guild.id;
+                const channelId = interaction.channel.id;
+
+                // Stop monitoring server
+                if (intervals.has(guildId) && intervals.get(guildId)[channelId]) {
+                    clearInterval(intervals.get(guildId)[channelId]);
+                    delete intervals.get(guildId)[channelId];
+                    delete botData.intervals[guildId][channelId];
+                    saveJSONData(botData);
+
+                    console.log(`Stopped monitoring server in channel: ${channelId}`); // Added log
+                    await interaction.reply({ content: 'Stopped monitoring the server.', ephemeral: true });
                 } else {
-                    await interaction.reply({ content: 'No server monitoring is active in this channel.', ephemeral: true });
+                    await interaction.reply({ content: 'No server is being monitored in this channel.', ephemeral: true });
                 }
             }
-            
         });
 
-        await this.setupCommands();
-        this.client.login(process.env.BOT_TOKEN);
+        await this.client.login(process.env.BOT_TOKEN);
     }
 }
 
 const bot = new Bot();
-bot.start();
+await bot.setupCommands();
+await bot.start();
